@@ -15,7 +15,7 @@ setup(
     packages=find_packages(exclude=['tests.*', 'tests', 'testproject', 'example.*', 'example']),
     include_package_data=True,
     install_requires=[
-        'django>=1.11.2'
+        'xyz-util>=0.1.21'
     ],
     classifiers=[
         "Environment :: Web Environment",
