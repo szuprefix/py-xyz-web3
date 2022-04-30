@@ -5,7 +5,7 @@ import sys
 
 setup(
     name="xyz-web3",
-    version="0.1.0",
+    version="0.1.1",
     author="szuprefix",
     author_email="szuprefix@126.com",
     description="web3 utils",

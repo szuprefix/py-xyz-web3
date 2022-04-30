@@ -1,22 +1,8 @@
 # -*- coding:utf-8 -*- 
 # author = 'denishuang'
 from __future__ import unicode_literals
-from xyz_util.crawlutils import extract_between
+from xyz_util.crawlutils import extract_between, retry
 from time import sleep
-
-
-def retry(func, times=3, interval=10):
-    try:
-        return func()
-    except:
-        if times > 1:
-            sleep(interval)
-            print('retrying...')
-            return retry(func, times - 1, interval*2)
-        import traceback
-        traceback.print_exc()
-        raise Exception('重试失败')
-
 
 class BaseEtherScan(object):
 
@@ -161,112 +147,20 @@ class NFTTransferScan(BaseEtherScan):
         d['nft'] = self.address
         return d
 
-# def get_nft_trades(address):
-#     from xyz_util.crawlutils import Browser
-#     b = Browser()
-#     b.get("https://etherscan.io/nfttracker?contractAddress=%s#trade" % address)
-#     b.element('#mytable_last .page-link').click()
-#     sleep(2)
-#
-#     def has_more(html):
-#         t = html.select('#mytable_wrapper .pagination span.page-link')[0].text
-#         print(t)
-#         no = int(extract_between(t, 'Page ', ' of'))
-#         if no > 1:
-#             b.element('#mytable_previous .page-link').click()
-#             sleep(2)
-#             return True
-#
-#     while True:
-#         html = b.get_bs_root()
-#         for r in html.select('#mytable tbody tr'):
-#             d = {}
-#             tds = r.select('td')
-#             d['hash'] = tds[1].text
-#             d['trans_time'] = tds[2].select('span')[0].text
-#             d['action'] = tds[3].text
-#             d['buyer'] = tds[4].text
-#             d['token_id'] = tds[6].text
-#             d['type'] = tds[7].text
-#             d['quantity'] = tds[8].text
-#             d['price'] = tds[9].text
-#             d['price_in_dolar'] = float(extract_between(d['price'], '$', ')').replace(',', ''))
-#             d['nft'] = address
-#             yield d
-#         if not has_more(html):
-#             return
-
-#
-# def get_nft_mint(address):
-#     from xyz_util.crawlutils import Browser
-#     b = Browser()
-#     b.get("https://etherscan.io/nfttracker?contractAddress=%s#trade" % address)
-#     b.element('#mytable_last .page-link').click()
-#     sleep(2)
-#
-#     def has_more(html):
-#         t = html.select('#mytable_mint_wrapper .pagination span.page-link')[0].text
-#         print(t)
-#         no = int(extract_between(t, 'Page ', ' of'))
-#         if no > 1:
-#             b.element('#mytable_mint_previous .page-link').click()
-#             sleep(2)
-#             return True
-#
-#     while True:
-#         html = b.get_bs_root()
-#         for r in html.select('#mytable_mint tbody tr'):
-#             d = {}
-#             tds = r.select('td')
-#             d['hash'] = tds[1].text
-#             d['trans_time'] = tds[2].select('span')[0].text
-#             d['action'] = tds[3].text
-#             d['maker'] = tds[4].text
-#             d['token_id'] = tds[6].text
-#             d['type'] = tds[7].text
-#             d['quantity'] = tds[8].text
-#             d['price'] = tds[9].text
-#             d['price_in_dolar'] = float(extract_between(d['price'], '$', ')').replace(',', ''))
-#             d['nft'] = address
-#             yield d
-#         if not has_more(html):
-#             return
-#
-#
-# def get_nft_transaction(address):
-#     from xyz_util.crawlutils import Browser
-#     b = Browser()
-#     b.get("https://etherscan.io/token/%s" % address)
-#     b.swith_iframe('tokentxnsiframe')
-#     def has_more():
-#         t = html.select('.page-item span.page-link.text-nowrap')[0].text
-#         print(t)
-#         no = int(extract_between(t, 'Page ', ' of'))
-#         count = int(extract_between(t,' of ', ' '))
-#         if no < count:
-#             b.element('.page-item .page-link[aria-label="Next"]').click()
-#             sleep(2)
-#             return True
-#
-#     while True:
-#         html = b.get_bs_root()
-#         for r in html.select('table tbody tr'):
-#             d = {}
-#             tds = r.select('td')
-#             d['hash'] = tds[1].text
-#             d['method'] = tds[2].text
-#             d['trans_time'] = tds[3].select('span')[0].text
-#             d['from'] = tds[5].text
-#             d['to'] = tds[7].text
-#             d['token_id'] = tds[8].text
-#             d['nft'] = address
-#             yield d
-#         if not has_more():
-#             return
-
-
 def crawl_nft_transaction(scanner):
     from .stores import TransactionStore
     ts = TransactionStore()
     scanner.callback = lambda r: ts.upsert({'hash': r['hash']}, r)
     scanner.crawl()
+
+def crawl_wallets_twitter(address_list, interval=2):
+    from xyz_twitter.helper import TwitterScan
+    sc = TwitterScan()
+    from .stores import WalletStore
+    ws = WalletStore()
+    for a in address_list:
+        sn = sc.search_screen_name(a)
+        if sn:
+            ws.upsert({'ens': a}, {'twitter': {'screen_name': sn}})
+        print(a, sn)
+        sleep(interval)
