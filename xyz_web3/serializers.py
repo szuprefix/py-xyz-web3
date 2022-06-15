@@ -26,6 +26,7 @@ class CollectionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerial
 
 class NFTSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     collection_name = serializers.CharField(label='邮集', source='collection.__str__', read_only=True)
+    wallet_name = serializers.CharField(label='钱包', source='wallet.__str__', read_only=True)
     class Meta:
         model = models.NFT
         exclude = ()

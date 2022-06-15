@@ -54,7 +54,9 @@ class OpenseaScan(object):
             try:
                 es.append(self.extract_row_data(b.element_to_bs(e)))
             except:
+                import traceback
                 print('error', e)
+                traceback.print_exc()
                 sleep(1)
         for be in es:
             yield be
@@ -66,6 +68,7 @@ if __name__ == '__main__':
     endpoint = args.endpoint
     def callback(d):
         r =requests.post('%sreport/' % endpoint, d, headers=headers)
+        print(r.status_code)
         print(r.json())
     sc = OpenseaScan(callback)
     while True:

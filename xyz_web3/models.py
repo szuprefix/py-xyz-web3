@@ -28,7 +28,7 @@ class Contract(models.Model):
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return self.address
 
 
 class Collection(models.Model):
