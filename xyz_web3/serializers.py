@@ -32,6 +32,8 @@ class NFTSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
 
 
 class TransactionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    from_addr_name = serializers.CharField(label='从', source='from_addr.__str__', read_only=True)
+    to_addr_name = serializers.CharField(label='到', source='to_addr.__str__', read_only=True)
     class Meta:
         model = models.Transaction
         exclude = ()
