@@ -49,9 +49,9 @@ class OpenseaScan(object):
     def extractActivity(self):
         b = self.browser
         te = b.element('[data-testid="ActivityTable"] [role="list"]')
-        for e in te.find_elements_by_css_selector('[role="listitem"]'):
-            be = b.element_to_bs(e)
-            yield self.extract_row_data(be)
+        es = [self.extract_row_data(b.element_to_bs(e)) for e in te.find_elements_by_css_selector('[role="listitem"]')]
+        for be in es:
+            yield be
 
 
 if __name__ == '__main__':
