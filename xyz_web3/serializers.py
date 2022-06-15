@@ -7,16 +7,30 @@ from rest_framework import serializers
 from . import models
 
 
-class UserSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+class WalletSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     class Meta:
-        model = models.User
+        model = models.Wallet
         exclude = ()
-        read_only_fields = ('user', )
+
+class ContractSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = models.Contract
+        exclude = ()
 
 
-class TweetSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+class CollectionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     class Meta:
-        model = models.Tweet
+        model = models.Collection
         exclude = ()
-        read_only_fields = ('user', 'questions_count')
+
+class NFTSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = models.NFT
+        exclude = ()
+
+
+class TransactionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = models.Transaction
+        exclude = ()
 

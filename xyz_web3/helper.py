@@ -3,6 +3,23 @@
 from __future__ import unicode_literals
 from xyz_util.crawlutils import extract_between, retry
 from time import sleep
+from django.conf import settings
+from datetime import datetime
+
+CONF = getattr(settings, 'WEB3', {})
+
+class Web3Api(object):
+
+    def __init__(self, api_key=CONF.get('API_KEY')):
+        url = "https://mainnet.infura.io/v3/%s" % api_key
+        from web3 import Web3
+        from ens import ENS
+        self.w3 = Web3(Web3.HTTPProvider(url))
+        self.ens = ENS.fromWeb3(self.w3)
+        for fn in ['get_transaction', 'get_balance']:
+            f = getattr(self.w3.eth, fn)
+            setattr(self, fn, f)
+
 
 class BaseEtherScan(object):
 
@@ -11,7 +28,7 @@ class BaseEtherScan(object):
         self.address = address
         self.brower = Browser()
         self.direction = direction
-        self.callback=callback
+        self.callback = callback
         self.row = None
         self.be_ready()
 
@@ -24,18 +41,16 @@ class BaseEtherScan(object):
                 self.brower.driver.execute_script(js)
                 return True
 
-
     def next_pages(self):
         raise NotImplementedError()
 
     def get_pages(self):
         raise NotImplementedError()
 
-
     def has_more(self):
         no, count = self.get_pages()
         if self.direction == 'next':
-            return no<count
+            return no < count
         if self.direction == 'previous':
             return no > 1
         return False
@@ -60,10 +75,12 @@ class BaseEtherScan(object):
                 self.next_page()
             else:
                 return 0
+
         while True:
             r = retry(one_round)
             if r == 0:
                 return
+
 
 class NFTTradeScan(BaseEtherScan):
     table_id = 'mytable'
@@ -84,7 +101,7 @@ class NFTTradeScan(BaseEtherScan):
     def has_more(self):
         no, count = self.get_pages()
         if self.direction == 'next':
-            return no<count
+            return no < count
         if self.direction == 'previous':
             return no > 1
         return False
@@ -122,7 +139,6 @@ class NFTTransferScan(BaseEtherScan):
         if self.direction == 'previous':
             self.brower.element('#mytable_last .page-link').click()
 
-
     def next_page(self):
         c = 'Previous' if self.direction == 'previous' else 'Next'
         self.brower.element('.page-item .page-link[aria-label="%s"]' % c).click()
@@ -147,11 +163,13 @@ class NFTTransferScan(BaseEtherScan):
         d['nft'] = self.address
         return d
 
+
 def crawl_nft_transaction(scanner):
     from .stores import TransactionStore
     ts = TransactionStore()
     scanner.callback = lambda r: ts.upsert({'hash': r['hash']}, r)
     scanner.crawl()
+
 
 def crawl_wallets_twitter(address_list, interval=2):
     from xyz_twitter.helper import TwitterScan
@@ -164,3 +182,35 @@ def crawl_wallets_twitter(address_list, interval=2):
             ws.upsert({'ens': a}, {'twitter': {'screen_name': sn}})
         print(a, sn)
         sleep(interval)
+
+
+def sync_transaction(d):
+    from .models import Transaction, Wallet
+    hash = d['hash']
+    t = Transaction.objects.filter(hash=hash).first()
+    if t:
+        return
+    w3 = Web3Api()
+    r = w3.get_transaction(hash)
+    d['from_addr'], created = Wallet.objects.get_or_create(address=r['from'])
+    d['to_addr'], created = Wallet.objects.get_or_create(address=r['to'])
+    t = Transaction(**d)
+    t.save()
+    return t
+
+class AlchemyApi():
+
+    def extract_nft(self, d):
+        attributes = '\n'.join(['%s:%s' % (a['trait_type'], a['value']) for a in d['metadata']['attributes']])
+        return dict(
+            contract=d['contract']['address'],
+            preview_url=d['media']['gateway'],
+            attributes=attributes,
+            name=d['title'],
+            token_id=eval(d['id']['tokenId'])
+        )
+
+    def get_wallet_nfts(self, wallet):
+        import requests
+        r = requests.get('https://eth-mainnet.alchemyapi.io/v2/bUBHjykrEz_Qd5HUetHi8rvNW8Ik57Kc/getNFTs/?owner=%s' % wallet)
+        return r.json()['ownedNfts']
