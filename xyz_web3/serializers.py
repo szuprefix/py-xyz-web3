@@ -19,11 +19,13 @@ class ContractSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializ
 
 
 class CollectionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    contract_name = serializers.CharField(label='邮集', source='contract.__str__', read_only=True)
     class Meta:
         model = models.Collection
         exclude = ()
 
 class NFTSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    collection_name = serializers.CharField(label='邮集', source='collection.__str__', read_only=True)
     class Meta:
         model = models.NFT
         exclude = ()

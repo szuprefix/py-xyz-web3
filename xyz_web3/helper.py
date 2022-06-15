@@ -8,6 +8,7 @@ from datetime import datetime
 
 CONF = getattr(settings, 'WEB3', {})
 
+
 class Web3Api(object):
 
     def __init__(self, api_key=CONF.get('API_KEY')):
@@ -184,6 +185,16 @@ def crawl_wallets_twitter(address_list, interval=2):
         sleep(interval)
 
 
+def crawl_wallets_ens(wallets):
+    api = Web3Api()
+    for wallet in wallets:
+        wa = wallet.address
+        n = api.ens.name(wa)
+        if n:
+            wallet.name = n
+            wallet.save()
+            print(n, wa)
+
 def sync_transaction(d):
     from .models import Transaction, Wallet
     hash = d['hash']
@@ -198,19 +209,58 @@ def sync_transaction(d):
     t.save()
     return t
 
+
+def sync_wallet_nfts(wallet):
+    api=AlchemyApi()
+    for nft in api.get_wallet_nfts(wallet.address):
+        d = api.extract_nft(nft)
+        if d:
+            save_wallet_nft(wallet, d)
+            print(d)
+
+def save_wallet_nft(wallet, d):
+    from .models import Collection, Contract, NFT
+    contract, created = Contract.objects.get_or_create(address=d['contract'])
+    collection, created = Collection.objects.get_or_create(
+        url=d['url'],
+        defaults=dict(
+            name=d['name'].split(' #')[0],
+            description=d['description'][:256],
+            contract=contract
+        )
+    )
+    nft, created = NFT.objects.get_or_create(
+        collection=collection,
+        token_id=d['token_id'],
+        defaults=dict(
+            preview_url=d['preview_url'],
+            name=d['name'],
+            attributes=d['attributes'][:256],
+            wallet=wallet
+        )
+    )
+
+
 class AlchemyApi():
 
     def extract_nft(self, d):
-        attributes = '\n'.join(['%s:%s' % (a['trait_type'], a['value']) for a in d['metadata']['attributes']])
+        meta = d['metadata']
+        if 'external_url' not in meta:
+            return None
+        print(meta['external_url'])
+        attributes = '\n'.join(['%s:%s' % (a['trait_type'], a['value']) for a in meta.get('attributes',[])])
         return dict(
             contract=d['contract']['address'],
-            preview_url=d['media']['gateway'],
+            preview_url=d['media'][0]['gateway'],
             attributes=attributes,
             name=d['title'],
+            description=d['description'],
+            url=meta['external_url'],
             token_id=eval(d['id']['tokenId'])
         )
 
     def get_wallet_nfts(self, wallet):
         import requests
-        r = requests.get('https://eth-mainnet.alchemyapi.io/v2/bUBHjykrEz_Qd5HUetHi8rvNW8Ik57Kc/getNFTs/?owner=%s' % wallet)
+        r = requests.get(
+            'https://eth-mainnet.alchemyapi.io/v2/bUBHjykrEz_Qd5HUetHi8rvNW8Ik57Kc/getNFTs/?owner=%s' % wallet)
         return r.json()['ownedNfts']
