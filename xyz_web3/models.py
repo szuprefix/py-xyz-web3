@@ -17,6 +17,19 @@ class Wallet(models.Model):
     def __str__(self):
         return self.name or self.address
 
+    def sync_ens(self):
+        from .helper import Web3Api
+        api = Web3Api()
+        n = api.ens.name(self.address)
+        if n:
+            self.name = n
+            self.save()
+            return n
+
+    def sync_nfts(self):
+        from .helper import sync_wallet_nfts
+        sync_wallet_nfts(self)
+
 
 class Contract(models.Model):
     class Meta:
@@ -36,7 +49,7 @@ class Collection(models.Model):
         verbose_name_plural = verbose_name = "数字藏品集"
         ordering = ('-create_time',)
 
-    url = models.CharField('地址', max_length=128, unique=True)
+    url = models.URLField('地址', max_length=255, unique=True)
     name = models.CharField("名称", max_length=64)
     contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
                                  on_delete=models.PROTECT)

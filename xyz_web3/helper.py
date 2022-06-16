@@ -5,6 +5,9 @@ from xyz_util.crawlutils import extract_between, retry
 from time import sleep
 from django.conf import settings
 from datetime import datetime
+import logging
+
+log = logging.getLogger('django')
 
 CONF = getattr(settings, 'WEB3', {})
 
@@ -185,16 +188,6 @@ def crawl_wallets_twitter(address_list, interval=2):
         sleep(interval)
 
 
-def crawl_wallets_ens(wallets):
-    api = Web3Api()
-    for wallet in wallets:
-        wa = wallet.address
-        n = api.ens.name(wa)
-        if n:
-            wallet.name = n
-            wallet.save()
-            print(n, wa)
-
 def sync_transaction(d):
     from .models import Transaction, Wallet
     hash = d['hash']
@@ -210,13 +203,25 @@ def sync_transaction(d):
     return t
 
 
+def get_recent_active_wallets(recent_days=1):
+    from xyz_util.dateutils import get_next_date
+    from .models import Wallet
+    return Wallet.objects.filter(
+        transactions_received__create_time__gt=get_next_date(None, -recent_days)
+    ).distinct()
+
+
 def sync_wallet_nfts(wallet):
-    api=AlchemyApi()
+    api = AlchemyApi()
     for nft in api.get_wallet_nfts(wallet.address):
         d = api.extract_nft(nft)
         if d:
-            save_wallet_nft(wallet, d)
-            print(d)
+            try:
+                save_wallet_nft(wallet, d)
+            except:
+                import traceback
+                log.error('save_wallet_nft error: %s', d)
+
 
 def save_wallet_nft(wallet, d):
     from .models import Collection, Contract, NFT
@@ -248,7 +253,16 @@ class AlchemyApi():
         if 'external_url' not in meta:
             return None
         print(meta['external_url'])
-        attributes = '\n'.join(['%s:%s' % (a['trait_type'], a['value']) for a in meta.get('attributes',[])])
+        attributes = meta.get('attributes', [])
+        try:
+            if isinstance(attributes, list):
+                attributes = '\n'.join(['%s:%s' % (a['trait_type'], a['value']) for a in attributes])
+            elif isinstance(attributes, dict):
+                from xyz_util.datautils import dict2str
+                attributes = dict2str(attributes)
+        except:
+            import traceback
+            print(attributes, traceback.format_exc())
         return dict(
             contract=d['contract']['address'],
             preview_url=d['media'][0]['gateway'],

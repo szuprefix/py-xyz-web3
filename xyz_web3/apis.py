@@ -5,7 +5,7 @@ from xyz_restful.mixins import BatchActionMixin
 from . import models, serializers, helper
 from rest_framework import viewsets, decorators, response
 from xyz_restful.decorators import register
-
+from xyz_util.statutils import do_rest_stat_action
 
 @register()
 class WalletViewSet(BatchActionMixin, viewsets.ModelViewSet):
@@ -18,6 +18,13 @@ class WalletViewSet(BatchActionMixin, viewsets.ModelViewSet):
     }
     ordering_fields = ('is_active', 'name', 'create_time')
 
+    @decorators.action(['GET'], detail=True)
+    def balance(self, request, pk):
+        obj = self.get_object()
+        from .helper import Web3Api
+        api = Web3Api()
+        b = api.get_balance(obj.address)
+        return response.Response(dict(etherium=b))
 
 @register()
 class CollectionViewSet(BatchActionMixin, viewsets.ModelViewSet):
@@ -75,3 +82,7 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
         d = dict([(k, v) for k, v in d.items() if k in ['hash', 'value', 'value_in_dolar']])
         t = helper.sync_transaction(d)
         return response.Response(self.get_serializer(instance=t).data)
+
+    # @decorators.action(['GET'], detail=False)
+    # def stat(self, request):
+    #     do_rest_stat_action(self, )
