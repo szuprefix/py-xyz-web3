@@ -76,9 +76,9 @@ class Transaction(models.Model):
 
     hash = models.CharField('编号', max_length=66, blank=True, unique=True)
     method = models.TextField("方法", max_length=64, blank=False, db_index=True)
-    from_addr = models.ForeignKey(Wallet, verbose_name=Wallet._meta.verbose_name, null=True, blank=True,
+    from_addr = models.ForeignKey(Wallet, verbose_name='从', null=True, blank=True,
                             related_name='transactions_started', on_delete=models.PROTECT)
-    to_addr = models.ForeignKey(Wallet, verbose_name=Wallet._meta.verbose_name, null=True, blank=True,
+    to_addr = models.ForeignKey(Wallet, verbose_name='到', null=True, blank=True,
                             related_name='transactions_received', on_delete=models.PROTECT)
     value = models.DecimalField("价值", blank=True, default=0, max_digits=20, decimal_places=6)
     value_in_dolar = models.DecimalField("价值(美元)", blank=True, default=0, max_digits=20, decimal_places=2)

@@ -67,7 +67,7 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
         'to_addr': ['in', 'exact'],
         'create_time': ['range']
     }
-    ordering_fields = ('create_time',)
+    ordering_fields = ('create_time', 'value', 'value_in_dolar')
 
     @decorators.action(['POST'], detail=False)
     def report(self, request):
