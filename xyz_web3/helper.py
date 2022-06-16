@@ -1,11 +1,13 @@
 # -*- coding:utf-8 -*- 
 # author = 'denishuang'
 from __future__ import unicode_literals
+
+from six import text_type
 from xyz_util.crawlutils import extract_between, retry
 from time import sleep
 from django.conf import settings
 from datetime import datetime
-import logging
+import logging, json
 
 log = logging.getLogger('django')
 
@@ -207,7 +209,7 @@ def get_recent_active_wallets(recent_days=1):
     from xyz_util.dateutils import get_next_date
     from .models import Wallet
     return Wallet.objects.filter(
-        transactions_received__create_time__gt=get_next_date(None, -recent_days)
+        transactions_sent__create_time__gt=get_next_date(None, -recent_days)
     ).distinct()
 
 
@@ -252,6 +254,8 @@ class AlchemyApi():
         meta = d['metadata']
         if 'external_url' not in meta:
             return None
+        if isinstance(meta, text_type):
+            meta = json.loads(meta.replace('\n', ''))
         print(meta['external_url'])
         attributes = meta.get('attributes', [])
         try:
@@ -262,13 +266,13 @@ class AlchemyApi():
                 attributes = dict2str(attributes)
         except:
             import traceback
-            print(attributes, traceback.format_exc())
+            log.error("extract_nft error: %s\n%s", attributes, traceback.format_exc())
         return dict(
             contract=d['contract']['address'],
             preview_url=d['media'][0]['gateway'],
             attributes=attributes,
             name=d['title'],
-            description=d['description'],
+            description=d.get('description', ''),
             url=meta['external_url'],
             token_id=eval(d['id']['tokenId'])
         )
