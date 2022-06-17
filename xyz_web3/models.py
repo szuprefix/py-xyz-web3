@@ -88,7 +88,7 @@ class Transaction(models.Model):
         ordering = ('-create_time',)
 
     hash = models.CharField('编号', max_length=66, blank=True, unique=True)
-    method = models.TextField("方法", max_length=64, blank=False, db_index=True)
+    method = models.CharField("方法", max_length=64, blank=False, db_index=True)
     from_addr = models.ForeignKey(Wallet, verbose_name='从', null=True, blank=True,
                             related_name='transactions_sent', on_delete=models.PROTECT)
     to_addr = models.ForeignKey(Wallet, verbose_name='到', null=True, blank=True,

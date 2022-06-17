@@ -6,7 +6,7 @@ from six import text_type
 from xyz_util.crawlutils import extract_between, retry
 from time import sleep
 from django.conf import settings
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging, json
 
 log = logging.getLogger('django')
@@ -206,10 +206,9 @@ def sync_transaction(d):
 
 
 def get_recent_active_wallets(recent_days=1):
-    from xyz_util.dateutils import get_next_date
     from .models import Wallet
     return Wallet.objects.filter(
-        transactions_sent__create_time__gt=get_next_date(None, -recent_days)
+        transactions_sent__create_time__gt=datetime.now()+timedelta(days=-recent_days)
     ).distinct()
 
 
