@@ -191,7 +191,7 @@ def crawl_wallets_twitter(address_list, interval=2):
 
 
 def sync_transaction(d):
-    from .models import Transaction, Wallet
+    from .models import Transaction, Wallet, Contract
     hash = d['hash']
     t = Transaction.objects.filter(hash=hash).first()
     if t:
@@ -199,7 +199,19 @@ def sync_transaction(d):
     w3 = Web3Api()
     r = w3.get_transaction(hash)
     d['from_addr'], created = Wallet.objects.get_or_create(address=r['from'])
-    d['to_addr'], created = Wallet.objects.get_or_create(address=r['to'])
+    d['contract'], created = Contract.objects.get_or_create(address=r['to'])
+    eapi = EtherScanApi()
+    ers = eapi.call(action='tokennfttx', module='account', address=r['from'], startblock=r['blockNumber'],
+                    endblock=r['blockNumber'])
+    for a in ers['result']:
+        # print(a['hash'], hash)
+        if a['hash'] == hash:
+            d['contract_nft'], created = Contract.objects.get_or_create(
+                address=a['contractAddress'],
+                defaults=dict(
+                    name=a['tokenName']
+                ))
+            d['to_addr'], created = Wallet.objects.get_or_create(address=a['from'])
     t = Transaction(**d)
     t.save()
     return t
@@ -208,7 +220,7 @@ def sync_transaction(d):
 def get_recent_active_wallets(recent_days=1):
     from .models import Wallet
     return Wallet.objects.filter(
-        transactions_sent__create_time__gt=datetime.now()+timedelta(days=-recent_days)
+        transactions_sent__create_time__gt=datetime.now() + timedelta(days=-recent_days)
     ).distinct()
 
 
@@ -221,7 +233,7 @@ def sync_wallet_nfts(wallet):
                 save_wallet_nft(wallet, d)
             except:
                 import traceback
-                log.error('save_wallet_nft error: %s', d)
+                log.error('save_wallet_nft error: %s %s', d, traceback.format_exc())
 
 
 def save_wallet_nft(wallet, d):
@@ -247,6 +259,27 @@ def save_wallet_nft(wallet, d):
     )
 
 
+class EtherScanApi():
+    def __init__(self, api_key=CONF.get('ETHERSCAN')):
+        self.api_key = api_key
+
+    def call(self, **kwargs):
+        import requests
+        from xyz_util.datautils import dict2str
+        d = dict(
+            module='account',
+            action='balance',
+            tag='latest',
+            apikey=self.api_key
+        )
+        d.update(kwargs)
+        url = "https://api.etherscan.io/api?%s" % dict2str(d, line_spliter='&', key_spliter='=')
+        r = requests.get(url)
+        if r.status_code != 200:
+            raise Exception('http error: %s', r.text)
+        return r.json()
+
+
 class AlchemyApi():
 
     def extract_nft(self, d):
@@ -259,7 +292,8 @@ class AlchemyApi():
         attributes = meta.get('attributes', [])
         try:
             if isinstance(attributes, list):
-                attributes = '\n'.join(['%s:%s' % (a['trait_type'], a['value']) for a in attributes])
+                attributes = '\n'.join(
+                    ['%s:%s' % (a['trait_type'], a['value']) for a in attributes if 'trait_type' in a])
             elif isinstance(attributes, dict):
                 from xyz_util.datautils import dict2str
                 attributes = dict2str(attributes)

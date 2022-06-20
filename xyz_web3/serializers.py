@@ -16,6 +16,7 @@ class ContractSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializ
     class Meta:
         model = models.Contract
         exclude = ()
+        read_only_fields = ('abi',)
 
 
 class CollectionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
@@ -35,6 +36,8 @@ class NFTSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
 class TransactionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     from_addr_name = serializers.CharField(label='从', source='from_addr.__str__', read_only=True)
     to_addr_name = serializers.CharField(label='到', source='to_addr.__str__', read_only=True)
+    contract_name = serializers.CharField(label='合约', source='contract.__str__', read_only=True)
+    contract_nft_name = serializers.CharField(label='NFT合约', source='contract_nft.__str__', read_only=True)
     class Meta:
         model = models.Transaction
         exclude = ()

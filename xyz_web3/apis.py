@@ -72,6 +72,8 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
         'id': ['in', 'exact'],
         'from_addr': ['in', 'exact'],
         'to_addr': ['in', 'exact'],
+        'contract': ['in', 'exact'],
+        'contract_nft': ['in', 'exact'],
         'create_time': ['range']
     }
     ordering_fields = ('create_time', 'value', 'value_in_dolar')
