@@ -68,13 +68,18 @@ if __name__ == '__main__':
     endpoint = args.endpoint
     def callback(d):
         r =requests.post('%sreport/' % endpoint, d, headers=headers)
-        print(r.status_code, d)
+        # print(r.status_code, d)
         print(r.json())
     sc = OpenseaScan(callback)
+    c = 0
     while True:
+        c +=1
         try:
+            print('round %d' % c)
             sc.getCurrentActivity()
         except:
+            print('reload browser')
+            sc.browser.reload(True)
             import traceback
             traceback.print_exc()
             sleep(10)
