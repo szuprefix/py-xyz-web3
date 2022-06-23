@@ -190,8 +190,14 @@ def crawl_wallets_twitter(address_list, interval=2):
         sleep(interval)
 
 
+def format_token_id(token_id):
+    if isinstance(token_id, text_type) and len(token_id) > 16:
+        return hex(token_id)
+    return token_id
+
+
 def sync_transaction(d):
-    from .models import Transaction, Wallet, Contract
+    from .models import Transaction, Wallet, Contract, Event
     hash = d['hash']
     t = Transaction.objects.filter(hash=hash).first()
     if t:
@@ -203,17 +209,24 @@ def sync_transaction(d):
     eapi = EtherScanApi()
     ers = eapi.call(action='tokennfttx', module='account', address=r['from'], startblock=r['blockNumber'],
                     endblock=r['blockNumber'])
-    for a in ers['result']:
-        # print(a['hash'], hash)
-        if a['hash'] == hash:
-            d['contract_nft'], created = Contract.objects.get_or_create(
-                address=a['contractAddress'],
-                defaults=dict(
-                    name=a['tokenName']
-                ))
-            d['to_addr'], created = Wallet.objects.get_or_create(address=a['from'])
-    t = Transaction(**d)
-    t.save()
+    for i, a in enumerate(ers['result']):
+        # print(a['hash'], a['timeStamp'])
+        event_time = datetime.fromtimestamp(int(a['timeStamp']))
+        d['contract_nft'], created = Contract.objects.get_or_create(
+            address=a['contractAddress'],
+            defaults=dict(
+                name=a['tokenName']
+            ))
+        d['to_addr'], created = Wallet.objects.get_or_create(address=a['from'])
+        if i == 0:
+            t = Transaction(**d)
+            t.save()
+        event, created = Event.objects.get_or_create(
+            transaction=t,
+            contract=d['contract_nft'],
+            token_id=format_token_id(a['tokenID']),
+            defaults=dict(event_time=event_time)
+        )
     return t
 
 

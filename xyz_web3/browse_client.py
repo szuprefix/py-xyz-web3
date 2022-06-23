@@ -68,8 +68,8 @@ if __name__ == '__main__':
     endpoint = args.endpoint
     def callback(d):
         r =requests.post('%sreport/' % endpoint, d, headers=headers)
-        # print(r.status_code, d)
-        print(r.json())
+        print(r.status_code, d)
+        # print(r.json())
     sc = OpenseaScan(callback)
     c = 0
     while True:

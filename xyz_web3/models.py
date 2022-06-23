@@ -77,7 +77,7 @@ class NFT(models.Model):
 
     collection = models.ForeignKey(Collection, verbose_name=Collection._meta.verbose_name, null=True, blank=True,
                                    on_delete=models.PROTECT)
-    token_id = models.PositiveIntegerField('编号', default=0)
+    token_id = models.CharField('编号', max_length=66, blank=True, default='')
     name = models.CharField("名称", max_length=64, blank=True, default='')
     attributes = models.CharField('参数', max_length=256, blank=True, default='')
     preview_url = models.URLField('预览地址', max_length=256, blank=True, default='')
@@ -103,11 +103,27 @@ class Transaction(models.Model):
                             related_name='transactions_received', on_delete=models.PROTECT)
     contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
                             related_name='transactions', on_delete=models.PROTECT)
-    contract_nft = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
+    contract_nft = models.ForeignKey(Contract, verbose_name='%s(NFT)' % Contract._meta.verbose_name, null=True, blank=True,
                             related_name='nfttransactions', on_delete=models.PROTECT)
     value = models.DecimalField("价值", blank=True, default=0, max_digits=20, decimal_places=6)
     value_in_dolar = models.DecimalField("价值(美元)", blank=True, default=0, max_digits=20, decimal_places=2)
+    trans_time = models.DateTimeField('时间', blank=True, null=True)
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
 
     def __str__(self):
         return self.hash
+
+
+class Event(models.Model):
+    class Meta:
+        verbose_name_plural = verbose_name = "事件"
+        ordering = ('-create_time',)
+        unique_together = ('transaction', 'contract', 'token_id')
+
+    transaction = models.ForeignKey(Transaction, verbose_name=Transaction._meta.verbose_name, null=True, blank=True,
+                            related_name='events', on_delete=models.PROTECT)
+    contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
+                            related_name='events', on_delete=models.PROTECT)
+    token_id = models.CharField('编号', max_length=66, blank=True, default='')
+    event_time = models.DateTimeField('时间', blank=True, null=True)
+    create_time = models.DateTimeField("创建时间", auto_now_add=True)

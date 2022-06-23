@@ -34,11 +34,18 @@ class NFTSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
 
 
 class TransactionSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
-    from_addr_name = serializers.CharField(label='从', source='from_addr.__str__', read_only=True)
-    to_addr_name = serializers.CharField(label='到', source='to_addr.__str__', read_only=True)
-    contract_name = serializers.CharField(label='合约', source='contract.__str__', read_only=True)
-    contract_nft_name = serializers.CharField(label='NFT合约', source='contract_nft.__str__', read_only=True)
+    from_addr_name = serializers.CharField(label='从', source='from_addr', read_only=True)
+    to_addr_name = serializers.CharField(label='到', source='to_addr', read_only=True)
+    contract_name = serializers.CharField(label='合约', source='contract', read_only=True)
+    contract_nft_name = serializers.CharField(label='NFT合约', source='contract_nft', read_only=True)
     class Meta:
         model = models.Transaction
         exclude = ()
 
+
+class EventSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
+    transaction_name = serializers.CharField(label='事务', source='transaction', read_only=True)
+    contract_name = serializers.CharField(label='合约', source='contract', read_only=True)
+    class Meta:
+        model = models.Event
+        exclude = ()

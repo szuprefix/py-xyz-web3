@@ -88,3 +88,16 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
     # @decorators.action(['GET'], detail=False)
     # def stat(self, request):
     #     do_rest_stat_action(self, )
+
+@register()
+class EventViewSet(BatchActionMixin, viewsets.ModelViewSet):
+    queryset = models.Event.objects.all()
+    serializer_class = serializers.EventSerializer
+    filter_fields = {
+        'id': ['in', 'exact'],
+        'transaction': ['in', 'exact'],
+        'contract': ['in', 'exact'],
+        'token_id': ['in', 'exact'],
+        'create_time': ['range']
+    }
+    ordering_fields = ('create_time', 'event_time', 'token_id')
