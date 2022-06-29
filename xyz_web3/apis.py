@@ -26,6 +26,19 @@ class WalletViewSet(BatchActionMixin, viewsets.ModelViewSet):
         b = api.get_balance(obj.address)
         return response.Response(dict(etherium=b))
 
+    @decorators.action(['GET'], detail=False)
+    def whales(self, request):
+        from xyz_util.statutils import QuerySetStat
+        from xyz_util.dateutils import get_next_date
+        qset = models.Transaction.objects.filter(create_time__gt=get_next_date(days=-7))
+        ranks=QuerySetStat(qset, "value_in_dolar__count", "from_addr").rank(-100)
+        ws = models.Wallet.objects.filter(id__in=ranks.keys())
+        rs = serializers.WalletProfileSerializer(ws, many=True).data
+        for r in rs:
+            r['buy_value_in_dolar'] = ranks.get(r['id'])
+        return response.Response(rs)
+
+
 @register()
 class CollectionViewSet(BatchActionMixin, viewsets.ModelViewSet):
     queryset = models.Collection.objects.all()
@@ -85,9 +98,10 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
         t = helper.sync_transaction(d)
         return response.Response(self.get_serializer(instance=t).data)
 
-    # @decorators.action(['GET'], detail=False)
-    # def stat(self, request):
-    #     do_rest_stat_action(self, )
+    @decorators.action(['GET'], detail=False)
+    def stat(self, request):
+        from .stats import stats_transaction
+        return do_rest_stat_action(self, stats_transaction)
 
 @register()
 class EventViewSet(BatchActionMixin, viewsets.ModelViewSet):

@@ -12,6 +12,11 @@ class WalletSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer
         model = models.Wallet
         exclude = ()
 
+class WalletProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Wallet
+        fields = ('address', 'name', 'id')
+
 class ContractSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = models.Contract

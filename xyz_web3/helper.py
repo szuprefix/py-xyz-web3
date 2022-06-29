@@ -8,6 +8,7 @@ from time import sleep
 from django.conf import settings
 from datetime import datetime, timedelta
 import logging, json
+import requests
 
 log = logging.getLogger('django')
 
@@ -277,7 +278,6 @@ class EtherScanApi():
         self.api_key = api_key
 
     def call(self, **kwargs):
-        import requests
         from xyz_util.datautils import dict2str
         d = dict(
             module='account',
@@ -294,6 +294,10 @@ class EtherScanApi():
 
 
 class AlchemyApi():
+
+    def __init__(self, api_key=CONF.get('ALCHEMYAPI')):
+        self.api_key = api_key
+        self.endpoint = 'https://eth-mainnet.alchemyapi.io/v2/%s' % api_key
 
     def extract_nft(self, d):
         meta = d['metadata']
@@ -323,8 +327,50 @@ class AlchemyApi():
             token_id=eval(d['id']['tokenId'])
         )
 
+    def get(self, url):
+        r = requests.get('%s%s' % (self.endpoint, url))
+        return r.json()
+
+    def json_rpc(self, method, params):
+        if isinstance(params, dict):
+            params = [params]
+        pd = {
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "alchemy_%s" % method,
+            "params": params
+        }
+        return requests.post(self.endpoint, json.dumps(pd)).json()
+
     def get_wallet_nfts(self, wallet):
-        import requests
-        r = requests.get(
-            'https://eth-mainnet.alchemyapi.io/v2/bUBHjykrEz_Qd5HUetHi8rvNW8Ik57Kc/getNFTs/?owner=%s' % wallet)
-        return r.json()['ownedNfts']
+        return self.get('/getNFTs/?owner=%s' % wallet)['ownedNfts']
+
+    def get_asset_transfers(self, from_addr, **kwargs):
+        pd = {
+            "fromAddress": from_addr,
+            "fromBlock": '0x0',
+            "excludeZeroValue": True
+        }
+        pd.update(kwargs)
+        return self.json_rpc('getAssetTransfers', pd)
+
+class OpenSea(object):
+
+    def __init__(self):
+        self.project = self.create_browser_project()
+
+    def create_browser_project(self):
+        from xyz_browser.signals import to_create_project
+        from .models import Wallet
+        return to_create_project.send_robust(
+            sender=Wallet,
+            name='OpenSea钱包信息',
+            script="""
+        extract('avatar','[display="inline-flex"] img','src')
+        extract('name','div[data-testid="phoenix-header"]')
+            """,
+        )[0][1]
+
+    def create_browser_task(self, url):
+        from xyz_browser.signals import to_create_task
+        to_create_task.send_robust(self, project=self.project, url=url)

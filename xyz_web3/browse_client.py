@@ -72,15 +72,19 @@ if __name__ == '__main__':
         # print(r.json())
     sc = OpenseaScan(callback)
     c = 0
+    rf = False
     while True:
         c +=1
         try:
             print('round %d' % c)
             sc.getCurrentActivity()
+            rf = True if c % 100 == 0 else False
         except:
-            print('reload browser')
-            sc.browser.reload(True)
+            rf = True
             import traceback
             traceback.print_exc()
             sleep(10)
+        if rf:
+            print('reload browser')
+            sc.browser.reload(True)
         sleep(1)
