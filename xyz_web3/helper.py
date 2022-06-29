@@ -354,6 +354,7 @@ class AlchemyApi():
         pd.update(kwargs)
         return self.json_rpc('getAssetTransfers', pd)
 
+
 class OpenSea(object):
 
     def __init__(self):
@@ -374,3 +375,18 @@ class OpenSea(object):
     def create_browser_task(self, url):
         from xyz_browser.signals import to_create_task
         to_create_task.send_robust(self, project=self.project, url=url)
+
+
+def create_opensea_linktree(task):
+    from xyz_linktree.signals import to_save_linktree
+    addr = task.url.split('/')[-1]
+    from .models import Wallet
+    w = Wallet.objects.get(address=addr)
+    to_save_linktree.send_robust(
+        sender=None,
+        user=w.user,
+        platform='OpenSea',
+        url=task.url,
+        name=task.data['name'],
+        avatar=task.data.get('avatar')
+    )
