@@ -372,8 +372,9 @@ class OpenSea(object):
             """,
         )[0][1]
 
-    def create_browser_task(self, url):
+    def create_browser_task(self, address):
         from xyz_browser.signals import to_create_task
+        url = 'https://opensea.io/%s' % address
         to_create_task.send_robust(self, project=self.project, url=url)
 
 
