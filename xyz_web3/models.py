@@ -49,7 +49,7 @@ class Wallet(models.Model):
     @property
     def linktree_links(self):
         from xyz_util.datautils import access
-        return access(self, 'user.as_linktree_account.links')
+        return access(self, 'user.as_linktree_account.links') or []
 
 
 class Contract(models.Model):

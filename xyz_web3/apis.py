@@ -7,6 +7,7 @@ from rest_framework import viewsets, decorators, response
 from xyz_restful.decorators import register
 from xyz_util.statutils import do_rest_stat_action
 
+
 @register()
 class WalletViewSet(BatchActionMixin, viewsets.ModelViewSet):
     queryset = models.Wallet.objects.all()
@@ -30,13 +31,17 @@ class WalletViewSet(BatchActionMixin, viewsets.ModelViewSet):
     def whales(self, request):
         from xyz_util.statutils import QuerySetStat
         from xyz_util.dateutils import get_next_date
-        qset = models.Transaction.objects.filter(create_time__gt=get_next_date(days=-7))
-        ranks=QuerySetStat(qset, "value_in_dolar__count", "from_addr").rank(-100)
+        rd = request.query_params
+        trade = rd.get('trade', 'buy')
+        recent_days = int(rd.get('recent_days', 7))
+        top = int(rd.get('top', 100))
+        qset = models.Transaction.objects.filter(create_time__gt=get_next_date(days=-recent_days))
+        ranks = QuerySetStat(qset, "value_in_dolar__count", "from_addr" if trade == 'buy' else "to_addr").rank(-top)
         ws = models.Wallet.objects.filter(id__in=ranks.keys())
         rs = serializers.WalletProfileSerializer(ws, many=True).data
         for r in rs:
-            r['buy_value_in_dolar'] = ranks.get(r['id'])
-        return response.Response(rs)
+            r['value_in_dolar'] = ranks.get(r['id'])
+        return response.Response(dict(results=sorted(rs, key=lambda a: a['value_in_dolar'], reverse=True)))
 
 
 @register()
@@ -102,6 +107,7 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
     def stat(self, request):
         from .stats import stats_transaction
         return do_rest_stat_action(self, stats_transaction)
+
 
 @register()
 class EventViewSet(BatchActionMixin, viewsets.ModelViewSet):
