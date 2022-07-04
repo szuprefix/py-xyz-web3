@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 from xyz_restful.mixins import IDAndStrFieldSerializerMixin
 from rest_framework import serializers
 from . import models
-
+from xyz_linktree.serializers import LinkSerializer
 
 class WalletSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     class Meta:
@@ -13,9 +13,10 @@ class WalletSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer
         exclude = ()
 
 class WalletProfileSerializer(serializers.ModelSerializer):
+    linktree_links = LinkSerializer(many=True)
     class Meta:
         model = models.Wallet
-        fields = ('address', 'name', 'id')
+        fields = ('address', 'name', 'id', 'linktree_links')
 
 class ContractSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer):
     class Meta:

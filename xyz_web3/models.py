@@ -11,7 +11,8 @@ class Wallet(models.Model):
         ordering = ('-create_time',)
 
     address = models.CharField('地址', max_length=64, unique=True)
-    user = models.OneToOneField('auth.user', verbose_name='网站用户', blank=True, null=True, on_delete=models.PROTECT)
+    user = models.OneToOneField('auth.user', verbose_name='网站用户', blank=True, null=True,
+                                related_name='as_web3_wallet', on_delete=models.PROTECT)
     name = models.CharField("名称", max_length=64, blank=True, default='')
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
     is_active = models.BooleanField("有效", blank=False, default=True)
@@ -44,6 +45,11 @@ class Wallet(models.Model):
                 )
             )
         super(Wallet, self).save(**kwargs)
+
+    @property
+    def linktree_links(self):
+        from xyz_util.datautils import access
+        return access(self, 'user.as_linktree_account.links')
 
 
 class Contract(models.Model):
