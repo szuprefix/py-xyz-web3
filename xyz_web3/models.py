@@ -14,12 +14,14 @@ class Wallet(models.Model):
     user = models.OneToOneField('auth.user', verbose_name='网站用户', blank=True, null=True,
                                 related_name='as_web3_wallet', on_delete=models.PROTECT)
     name = models.CharField("名称", max_length=64, blank=True, default='')
+    # balance = models.DecimalField("余额", max_digits=20, decimal_places=6)
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
+    # update_time = models.DateTimeField("更新时间", auto_now=True)
     is_active = models.BooleanField("有效", blank=False, default=True)
     is_signed = models.BooleanField("已验", blank=False, default=False)
 
     def __str__(self):
-        return self.name or self.address
+        return self.name or self.address[:8]
 
     def sync_ens(self):
         from .helper import Web3Api
@@ -64,7 +66,7 @@ class Contract(models.Model):
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
 
     def __str__(self):
-        return self.name or self.address
+        return self.name or self.address[:8]
 
     def sync_abi(self):
         from .helper import EtherScanApi
@@ -82,6 +84,7 @@ class Collection(models.Model):
     name = models.CharField("名称", max_length=64)
     contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
                                  related_name='collections', on_delete=models.PROTECT)
+    preview_url = models.URLField('预览地址', max_length=256, blank=True, default='')
     description = models.CharField("描述", max_length=256, blank=True, default='')
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
     is_active = models.BooleanField("有效", blank=False, default=True)
@@ -94,10 +97,10 @@ class NFT(models.Model):
     class Meta:
         verbose_name_plural = verbose_name = "数字藏品"
         ordering = ('-create_time',)
-        unique_together = ('collection', 'token_id')
+        # unique_together = ('collection', 'token_id')
 
     collection = models.ForeignKey(Collection, verbose_name=Collection._meta.verbose_name, null=True, blank=True,
-                                   on_delete=models.PROTECT)
+                                   related_name='nfts', on_delete=models.PROTECT)
     token_id = models.CharField('编号', max_length=66, blank=True, default='')
     name = models.CharField("名称", max_length=64, blank=True, default='')
     attributes = models.CharField('参数', max_length=256, blank=True, default='')
@@ -125,15 +128,16 @@ class Transaction(models.Model):
     contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
                                  related_name='transactions', on_delete=models.PROTECT)
     contract_nft = models.ForeignKey(Contract, verbose_name='%s(NFT)' % Contract._meta.verbose_name, null=True,
-                                     blank=True,
-                                     related_name='nfttransactions', on_delete=models.PROTECT)
+                                     blank=True, related_name='nfttransactions', on_delete=models.PROTECT)
+    collection = models.ForeignKey(Collection, verbose_name='NFT集', null=True,
+                                     blank=True, related_name='transactions', on_delete=models.PROTECT)
     value = models.DecimalField("价值", blank=True, default=0, max_digits=20, decimal_places=6)
     value_in_dolar = models.DecimalField("价值(美元)", blank=True, default=0, max_digits=20, decimal_places=2)
     trans_time = models.DateTimeField('时间', blank=True, null=True, db_index=True)
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
 
     def __str__(self):
-        return self.hash
+        return self.hash[:12]
 
 
 class Event(models.Model):

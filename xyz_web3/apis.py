@@ -96,6 +96,11 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
     }
     ordering_fields = ('create_time', 'value', 'value_in_dolar')
 
+    def get_serializer_class(self):
+        if self.action == 'events':
+            return serializers.TransactionEventsSerializer
+        return super(TransactionViewSet, self).get_serializer_class()
+
     @decorators.action(['POST'], detail=False)
     def report(self, request):
         d = request.data
@@ -107,6 +112,10 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
     def stat(self, request):
         from .stats import stats_transaction
         return do_rest_stat_action(self, stats_transaction)
+
+    @decorators.action(['GET'], detail=False)
+    def events(self, request):
+        return self.list(request)
 
 
 @register()

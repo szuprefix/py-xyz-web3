@@ -254,11 +254,12 @@ def save_wallet_nft(wallet, d):
     from .models import Collection, Contract, NFT
     contract, created = Contract.objects.get_or_create(address=d['contract'])
     collection, created = Collection.objects.get_or_create(
-        url=d['url'],
+        contract=contract,
         defaults=dict(
             name=d['name'].split(' #')[0],
+            preview_url=d['preview_url'],
             description=d['description'][:256],
-            contract=contract
+            url=d['url']
         )
     )
     nft, created = NFT.objects.get_or_create(
@@ -291,6 +292,15 @@ class EtherScanApi():
         if r.status_code != 200:
             raise Exception('http error: %s', r.text)
         return r.json()
+
+    def get_nft_trans(self, **kwargs):
+        return self.call(action='tokennfttx', module='account', **kwargs)
+
+    def get_balance(self, **kwargs):
+        return self.call(action='balance', module='account', **kwargs)
+
+    def get_trans(self, **kwargs):
+        return self.call(action='txlist', module='account', **kwargs)
 
 
 class AlchemyApi():
@@ -344,6 +354,12 @@ class AlchemyApi():
 
     def get_wallet_nfts(self, wallet):
         return self.get('/getNFTs/?owner=%s' % wallet)['ownedNfts']
+
+    def get_contract_nfts(self, contract):
+        return self.get('/getNFTs/?')
+
+    def get_contract_metadata(self, contract):
+        return self.get('/getContractMetadata/?contractAddress=%s' % contract)['contractMetadata']
 
     def get_asset_transfers(self, from_addr, **kwargs):
         pd = {

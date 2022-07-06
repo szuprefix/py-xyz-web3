@@ -55,3 +55,19 @@ class EventSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer)
     class Meta:
         model = models.Event
         exclude = ()
+
+class EventTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Event
+        fields = ('token_id', )
+
+
+class TransactionEventsSerializer(serializers.ModelSerializer):
+    events = EventTokenSerializer(many=True)
+    from_addr = serializers.CharField(label='买方', source='from_addr.address')
+    to_addr = serializers.CharField(label='卖方', source='to_addr.address')
+    contract_name = serializers.CharField(label='合约', source='contract', read_only=True)
+    contract_nft_name = serializers.CharField(label='NFT合约', source='contract_nft', read_only=True)
+    class Meta:
+        model = models.Transaction
+        exclude = ()
