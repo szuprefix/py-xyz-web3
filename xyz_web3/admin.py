@@ -12,14 +12,14 @@ class WalletAdmin(admin.ModelAdmin):
 
 @admin.register(models.Contract)
 class ContractAdmin(admin.ModelAdmin):
-    list_display = ('address', 'is_active', 'create_time')
+    list_display = ('address', 'name',  'is_active', 'create_time')
     search_fields = ('address',)
     date_hierarchy = 'create_time'
 
 
 @admin.register(models.Collection)
 class CollectionAdmin(admin.ModelAdmin):
-    list_display = ('url', 'name', 'contract', 'is_active', 'create_time')
+    list_display = ('__str__', 'url', 'contract', 'is_active', 'create_time')
     search_fields = ("name", "url")
     date_hierarchy = 'create_time'
     readonly_fields = ('contract',)
@@ -40,6 +40,6 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(models.Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('transaction', 'contract', 'token_id', 'event_time', 'create_time')
+    list_display = ('transaction', 'contract', 'nft', 'token_id', 'event_time', 'create_time')
     date_hierarchy = 'event_time'
-    readonly_fields = ('transaction', 'contract')
+    readonly_fields = ('transaction', 'contract', 'nft')

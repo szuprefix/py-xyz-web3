@@ -62,6 +62,7 @@ class Contract(models.Model):
     address = models.CharField('地址', max_length=64, unique=True)
     name = models.CharField("名称", max_length=64, blank=True, default='')
     abi = JSONField('ABI', blank=True, default={})
+    # standard = models.CharField('标准', max_length=16, blank=True, null=True,default='')
     is_active = models.BooleanField("有效", blank=False, default=True)
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
 
@@ -80,10 +81,10 @@ class Collection(models.Model):
         verbose_name_plural = verbose_name = "数字藏品集"
         ordering = ('-create_time',)
 
-    url = models.URLField('地址', max_length=255, unique=True)
+    contract = models.OneToOneField(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
+                                 on_delete=models.PROTECT)
+    url = models.URLField('地址', max_length=255)
     name = models.CharField("名称", max_length=64)
-    contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
-                                 related_name='collections', on_delete=models.PROTECT)
     preview_url = models.URLField('预览地址', max_length=256, blank=True, default='')
     description = models.CharField("描述", max_length=256, blank=True, default='')
     create_time = models.DateTimeField("创建时间", auto_now_add=True)
@@ -101,6 +102,8 @@ class NFT(models.Model):
 
     collection = models.ForeignKey(Collection, verbose_name=Collection._meta.verbose_name, null=True, blank=True,
                                    related_name='nfts', on_delete=models.PROTECT)
+    contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
+                                 related_name='nfts', on_delete=models.PROTECT)
     token_id = models.CharField('编号', max_length=66, blank=True, default='')
     name = models.CharField("名称", max_length=64, blank=True, default='')
     attributes = models.CharField('参数', max_length=256, blank=True, default='')
@@ -149,6 +152,8 @@ class Event(models.Model):
     transaction = models.ForeignKey(Transaction, verbose_name=Transaction._meta.verbose_name, null=True, blank=True,
                                     related_name='events', on_delete=models.PROTECT)
     contract = models.ForeignKey(Contract, verbose_name=Contract._meta.verbose_name, null=True, blank=True,
+                                 related_name='events', on_delete=models.PROTECT)
+    nft = models.ForeignKey(NFT, verbose_name=NFT._meta.verbose_name, null=True, blank=True,
                                  related_name='events', on_delete=models.PROTECT)
     token_id = models.CharField('编号', max_length=66, blank=True, default='')
     event_time = models.DateTimeField('时间', blank=True, null=True)

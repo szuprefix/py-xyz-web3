@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from six import text_type
 from xyz_util.crawlutils import extract_between, retry
+from xyz_util.datautils import access
 from time import sleep
 from django.conf import settings
 from datetime import datetime, timedelta
@@ -192,41 +193,66 @@ def crawl_wallets_twitter(address_list, interval=2):
 
 
 def format_token_id(token_id):
-    if isinstance(token_id, text_type) and len(token_id) > 16:
-        return hex(token_id)
-    return token_id
+    d = token_id
+    if isinstance(token_id, text_type):
+        if token_id.startswith('0x'):
+            d = int(d, 16)
+        else:
+            d = int(d)
+    if d > 1000000000:
+        return hex(d)
+    return d
 
 
 def sync_transaction(d):
-    from .models import Transaction, Wallet, Contract, Event
+    from .models import Transaction, Wallet, Contract, Event, NFT
     hash = d['hash']
     t = Transaction.objects.filter(hash=hash).first()
     if t:
         return
     w3 = Web3Api()
-    r = w3.get_transaction(hash)
-    d['from_addr'], created = Wallet.objects.get_or_create(address=r['from'])
-    d['contract'], created = Contract.objects.get_or_create(address=r['to'])
+    wt = w3.get_transaction(hash)
+    d['from_addr'], created = Wallet.objects.get_or_create(address=wt['from'])
+    d['contract'], created = Contract.objects.get_or_create(address=wt['to'])
+    wallet = d['from_addr']
     eapi = EtherScanApi()
-    ers = eapi.call(action='tokennfttx', module='account', address=r['from'], startblock=r['blockNumber'],
-                    endblock=r['blockNumber'])
+    ers = eapi.get_nft_trans(address=wt['from'], startblock=wt['blockNumber'],
+                             endblock=wt['blockNumber'])
+    tm = {}
     for i, a in enumerate(ers['result']):
         # print(a['hash'], a['timeStamp'])
         event_time = datetime.fromtimestamp(int(a['timeStamp']))
+        ca = a['contractAddress']
         d['contract_nft'], created = Contract.objects.get_or_create(
-            address=a['contractAddress'],
+            address=ca,
             defaults=dict(
                 name=a['tokenName']
             ))
         d['to_addr'], created = Wallet.objects.get_or_create(address=a['from'])
         if i == 0:
-            t = Transaction(**d)
+            trans_time = datetime.fromtimestamp(int(a["timeStamp"]))
+            t = Transaction(trans_time=trans_time, **d)
             t.save()
+        tm.setdefault(ca, {})[format_token_id(a['tokenID'])] = 1
+    alchemy = AlchemyApi()
+    rs = alchemy.get_nfts(owner=wt['from'], contractAddresses=','.join(tm.keys()))
+    print(tm)
+    for r in rs:
+        ca = access(r, 'contract.address')
+        tid = format_token_id(access(r, 'id.tokenId'))
+        if ca not in tm or tid not in tm[ca]:
+            continue
+        print(r)
+        nd = alchemy.extract_nft(r)
+        nft = save_wallet_nft(wallet, nd) if nd else None
         event, created = Event.objects.get_or_create(
             transaction=t,
             contract=d['contract_nft'],
-            token_id=format_token_id(a['tokenID']),
-            defaults=dict(event_time=event_time)
+            token_id=nft.token_id,
+            defaults=dict(
+                event_time=event_time,
+                nft=nft
+            )
         )
     return t
 
@@ -238,9 +264,9 @@ def get_recent_active_wallets(recent_days=1):
     ).distinct()
 
 
-def sync_wallet_nfts(wallet):
+def sync_wallet_nfts(wallet, **kwargs):
     api = AlchemyApi()
-    for nft in api.get_wallet_nfts(wallet.address):
+    for nft in api.get_nfts(owner=wallet.address, **kwargs):
         d = api.extract_nft(nft)
         if d:
             try:
@@ -252,7 +278,9 @@ def sync_wallet_nfts(wallet):
 
 def save_wallet_nft(wallet, d):
     from .models import Collection, Contract, NFT
+    print(d)
     contract, created = Contract.objects.get_or_create(address=d['contract'])
+    token_id = format_token_id(d['token_id'])
     collection, created = Collection.objects.get_or_create(
         contract=contract,
         defaults=dict(
@@ -263,15 +291,17 @@ def save_wallet_nft(wallet, d):
         )
     )
     nft, created = NFT.objects.get_or_create(
-        collection=collection,
-        token_id=d['token_id'],
+        token_id=token_id,
+        contract = contract,
         defaults=dict(
+            collection=collection,
             preview_url=d['preview_url'],
             name=d['name'],
             attributes=d['attributes'][:256],
             wallet=wallet
         )
     )
+    return nft
 
 
 class EtherScanApi():
@@ -311,11 +341,12 @@ class AlchemyApi():
 
     def extract_nft(self, d):
         meta = d['metadata']
-        if 'external_url' not in meta:
-            return None
+        # if 'external_url' not in meta:
+        #     return None
         if isinstance(meta, text_type):
             meta = json.loads(meta.replace('\n', ''))
-        print(meta['external_url'])
+        url = meta.get('external_url','')
+        print(url)
         attributes = meta.get('attributes', [])
         try:
             if isinstance(attributes, list):
@@ -333,12 +364,14 @@ class AlchemyApi():
             attributes=attributes,
             name=d['title'],
             description=d.get('description', ''),
-            url=meta['external_url'],
-            token_id=eval(d['id']['tokenId'])
+            url=url,
+            token_id=format_token_id(d['id']['tokenId'])
         )
 
-    def get(self, url):
-        r = requests.get('%s%s' % (self.endpoint, url))
+    def get(self, url, **kwargs):
+        from xyz_util.datautils import dict2str
+        ps = dict2str(kwargs, line_spliter='&', key_spliter='=')
+        r = requests.get('%s%s?%s' % (self.endpoint, url, ps))
         return r.json()
 
     def json_rpc(self, method, params):
@@ -351,6 +384,18 @@ class AlchemyApi():
             "params": params
         }
         return requests.post(self.endpoint, json.dumps(pd)).json()
+
+    def get_nfts(self, **kwargs):
+        d = kwargs
+        while True:
+            rs = self.get('/getNFTs/', **d)
+            nfts = rs['ownedNfts']
+            for nft in nfts:
+                yield nft
+            pk = rs.get('pageKey')
+            if not pk:
+                break
+            d['pageKey'] = pk
 
     def get_wallet_nfts(self, wallet):
         return self.get('/getNFTs/?owner=%s' % wallet)['ownedNfts']

@@ -75,6 +75,7 @@ class NFTViewSet(BatchActionMixin, viewsets.ModelViewSet):
     serializer_class = serializers.NFTSerializer
     filter_fields = {
         'id': ['in', 'exact'],
+        'token_id': ['in', 'exact'],
         'wallet': ['in', 'exact'],
         'collection': ['in', 'exact'],
         'create_time': ['range']
@@ -91,6 +92,7 @@ class TransactionViewSet(BatchActionMixin, viewsets.ModelViewSet):
         'from_addr': ['in', 'exact'],
         'to_addr': ['in', 'exact'],
         'contract': ['in', 'exact'],
+        'collection': ['in', 'exact'],
         'contract_nft': ['in', 'exact'],
         'create_time': ['range']
     }
